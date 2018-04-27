@@ -79,8 +79,8 @@
 					</option>
 				</select>
 				<br />
-				<input type="button" onclick="new new_step('text', add_type.value)" value="Add Text" name="add_text" />
-				<input type="button" onclick="new new_step('image', add_type.value)" value="Add Image" name="add_image" />
+				<input type="button" onclick="new new_step({type: 'text', shape: add_type.value});" value="Add Text" name="add_text" />
+				<input type="button" onclick="new new_step({type: 'image', shape: add_type.value});" value="Add Image" name="add_image" />
 				<br />
 				<input type="button" onclick="export_format();" value="Export" name="export" />
 				<input type="file" onchange="import_format(this.files[0]);" style="display: none;" name="format_file" />
@@ -113,6 +113,7 @@
 	<script src="./js/libs/fabric.min.js"></script>
 	<script>
 		// Setup global variables
+		var VERSION = 1.0;
 		var canvas;
 		var meme = {
 			name: '',
@@ -226,6 +227,7 @@
 			if (meme.data === undefined) return alert('You haven\'t loaded a image!');
 
 			var format = {
+				version: VERSION,
 				image: meme.data,
 				steps: []
 			}
@@ -248,7 +250,25 @@
 		 * @param {File} [format_file] File that's a format; .json.
 		 * @return {undefined} Returns nothing.
 		 */
-		function import_format(format_file) {}
+		function import_format(format_file) {
+			meme.name = format_file.name.split(".");
+			var reader = new FileReader();
+
+			reader.onload = function(event) {
+			  var format = JSON.parse(event.target.result);
+
+			  if (format.version === VERSION) {
+			    // load_background()
+
+					clear_steps();
+					for (var step in format.steps) {
+						new new_step(format.steps[step]);
+					}
+			  } else alert('Given format isn\'t up to date!\nGiven:' + format.version + '\nRequired:' + VERSION);
+			};
+
+			reader.readAsText(format_file);
+		}
 
 
 		/**
@@ -358,39 +378,72 @@
 
 
  		/**
- 		 * Create a Step in Canvas.
- 		 * @param {string} [step_type] Type of Step to create; default: text - options: text, image.
- 		 * @param {string} [step_shape] Shape of Step; default: rectangle - options: rectangle, circle.
- 		 * @return {Object} Returns instance of step.
+ 		 * Clear all Steps.
+ 		 * @return {undefined} Returns nothing.
  		 */
- 		 function new_step(step_type, step_shape) {
-			this.id = steps.push(this) - 1;
-			this.type = step_type;
-			this.shape = step_shape;
-			this.color = randomRGB();
+ 		 function clear_steps() {
+			 for (var step in steps) {
+				 // Remove Step's content from Canvas
+				 canvas.remove(steps[step].content);
+				 canvas.requestRenderAll();
+			 }
+			 steps = [];
+		 }
+
+
+ 		/**
+ 		 * Create a Step in Canvas.
+ 		 * @param {Object} [options] Options for step; options:type, shape, positon, size and etc.
+ 		 * @return {Object} Returns instance of this new Step.
+ 		 */
+ 		 function new_step(options) {
+			options = Object.assign({
+				type: 'text',
+				shape: 'rectangle',
+				color: randomRGB(),
+				angle: 0,
+				size: [
+					100,
+					100
+				],
+				position: [
+					canvas.width / 2,
+					canvas.height / 2
+				]
+			}, options);
+
+ 			this.id = steps.push(this) - 1;
+			this.type = options.type;
+			this.shape = options.shape;
+			this.color = options.color;
 
 			this.content = new fabric.Group([], {
 				lockScalingFlip: true,
+				originX: 'center',
+				originY: 'center',
+				width: options.size[0],
+				height: options.size[1],
+				angle: options.angle,
 				fill: 'rgba(0, 0, 0, 0)',
 				backgroundColor: 'rgba(0, 0, 0, 0)'
 			});
 
-			if (step_shape === 'rectangle') {
+			if (this.shape === 'rectangle') {
 				this.content.addWithUpdate(new fabric.Rect({
 					originX: 'center',
 					originY: 'center',
-					width: 190,
-					height: 120,
+					width: 100,
+					height: 100,
 					stroke: stringRGB(this.color),
 					strokeWidth: 3,
 					fill: 'rgba(0, 0, 0, 0)',
 					backgroundColor: 'rgba(0, 0, 0, 0)'
 				}));
-			} else if (step_shape === 'circle') {
+			} else if (this.shape === 'circle') {
 				this.content.addWithUpdate(new fabric.Circle({
 					originX: 'center',
 					originY: 'center',
-					radius: 100,
+					radius: 50,
 					stroke: stringRGB(this.color),
 					strokeWidth: 3,
 					fill: 'rgba(0, 0, 0, 0)',
@@ -398,7 +451,7 @@
 				}));
 			}
 
-			this.content.addWithUpdate(new fabric.Text((this.id + 1) + '\n' + step_type, {
+			this.content.addWithUpdate(new fabric.Text((this.id + 1) + '\n' + this.type, {
 				minScaleLimit: 1,
 				originX: 'center',
 				originY: 'center',
@@ -409,7 +462,8 @@
 			}));
 
 			canvas.add(this.content);
-			this.content.center();
+			this.content.left = options.position[0];
+			this.content.top = options.position[1];
 
 			canvas.requestRenderAll();
 
@@ -417,14 +471,16 @@
 				return {
 					type: this.type,
 					shape: this.shape,
+					color: this.color,
+					position: [
+						Math.floor(this.content.left),
+						Math.floor(this.content.top)
+					],
 					size: [
 						Math.floor(this.content._objects[0].width),
 						Math.floor(this.content._objects[0].height)
 					],
-					position: [
-						Math.floor(this.content.left),
-						Math.floor(this.content.top)
-					]
+					angle: Math.floor(this.content.angle)
 				};
 			}
 
