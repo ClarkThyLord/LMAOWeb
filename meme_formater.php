@@ -258,7 +258,7 @@
 			  var format = JSON.parse(event.target.result);
 
 			  if (format.version === VERSION) {
-			    // load_background()
+			    load_background(format.image);
 
 					clear_steps();
 					for (var step in format.steps) {
@@ -339,40 +339,65 @@
 
 		/**
 		 * Load background for the Canvas.
-		 * @param {image_file} [image] A image file.
+		 * @param {String/Object} [image] A String or Object representing a File.
 		 * @return {undefined} Returns nothing.
 		 */
-		 function load_background(image_file) {
-		 	var reader  = new FileReader();
+		 function load_background(image) {
+			if (typeof image === 'string') {
+ 				 // Setup Meme info
+				 // TODO Setup meme name
+ 				 // meme.name = image_file.name;
+ 				 meme.data = image;
 
-			// Once file has been read do the following
-			reader.addEventListener('load', function () {
-				// Setup Meme info
-				meme.name = image_file.name;
-				meme.data = reader.result.replace(/^data:image\/(png|jpg);base64,/, "");
+ 				 new fabric.Image.fromURL(image, function (image) {
+ 					 // Set Image to center
+ 					 image.originX = image.originY = 'center';
+ 					 image.left = canvas.width / 2;
+ 					 image.top = canvas.height / 2;
 
-				new fabric.Image.fromURL(reader.result, function (image) {
-					// Set Image to center
-					image.originX = image.originY = 'center';
-					image.left = canvas.width / 2;
-					image.top = canvas.height / 2;
+ 					 // Resize Image to fit Canvas
+ 					 if (canvas.width < canvas.height * 1.30) {
+ 						 image.scaleToWidth(canvas.width * 0.75);
+ 					 } else {
+ 						 image.scaleToHeight(canvas.height * 0.75);
+ 					 }
 
-					// Resize Image to fit Canvas
-					if (canvas.width < canvas.height * 1.30) {
-						image.scaleToWidth(canvas.width * 0.75);
-					} else {
-						image.scaleToHeight(canvas.height * 0.75);
-					}
+ 					 // Set Canvas background
+ 					 canvas.setBackgroundImage(image);
+ 					 canvas.requestRenderAll();
+ 				 });
+			} else if (typeof image === 'object') {
+  		 	var reader  = new FileReader();
 
-					// Set Canvas background
-					canvas.setBackgroundImage(image);
-					canvas.requestRenderAll();
-				});
-			});
+  			// Once file has been read do the following
+  			reader.addEventListener('load', function () {
+  				// Setup Meme info
+  				meme.name = image.name;
+  				meme.data = reader.result.replace(/^data:image\/(png|jpg);base64,/, "");
 
-			// Read image if any given
-			if (image_file) {
-				reader.readAsDataURL(image_file)
+  				new fabric.Image.fromURL(reader.result, function (image_obj) {
+  					// Set Image to center
+  					image_obj.originX = image_obj.originY = 'center';
+  					image_obj.left = canvas.width / 2;
+  					image_obj.top = canvas.height / 2;
+
+  					// Resize Image to fit Canvas
+  					if (canvas.width < canvas.height * 1.30) {
+  						image_obj.scaleToWidth(canvas.width * 0.75);
+  					} else {
+  						image_obj.scaleToHeight(canvas.height * 0.75);
+  					}
+
+  					// Set Canvas background
+  					canvas.setBackgroundImage(image_obj);
+  					canvas.requestRenderAll();
+  				});
+  			});
+
+  			// Read image if any given
+  			if (image) {
+  				reader.readAsDataURL(image)
+  			}
 			}
 		 }
 
